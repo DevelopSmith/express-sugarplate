@@ -1,10 +1,12 @@
-var LocalStrategy = require('passport-local').Strategy;
-var mongoose = require('mongoose');
-var User = mongoose.model('User');
-var utilities = require('../utilities/utilities.js');
-var crypto = require('crypto');
+import {Strategy as LocalStrategy } from 'passport-local';
+import mongoose from 'mongoose';
+const User = mongoose.model('User');
 
-module.exports = function(passport) {
+import constants from '../config/constants';
+import { sendEmail } from '../utilities';
+import { makeUniqueID } from '../utilities/helpers';
+
+module.exports = passport => {
 	// =========================================================================
 	// passport session setup ==================================================
 	// =========================================================================
@@ -12,13 +14,13 @@ module.exports = function(passport) {
 	// passport needs ability to serialize and unserialize users out of session
 
 	// used to serialize the user for the session
-	passport.serializeUser(function(user, done) {
+	passport.serializeUser((user, done) => {
 		done(null, user.id);
 	});
 
 	// used to deserialize the user
-	passport.deserializeUser(function(id, done) {
-		User.findById(id, function(err, user) {
+	passport.deserializeUser((id, done) => {
+		User.findById(id, (err, user) => {
 			done(err, user);
 		});
 	});
@@ -31,7 +33,7 @@ module.exports = function(passport) {
 		usernameField : 'email',
 		passwordField : 'password',
 		passReqToCallback : true // allows us to pass in the req from our route (lets us check if a user is logged in or not)
-	}, function(req, email, password, done){
+	}, (req, email, password, done) => {
 		if(email){
 			email = email.toLowerCase(); // Use lower-case e-mails to avoid case-sensitive e-mail matching
 		}
@@ -47,8 +49,8 @@ module.exports = function(passport) {
 		}
 
 		// asynchronous
-		process.nextTick(function(){
-			User.findOne(finding, function(err, user){
+		process.nextTick(() => {
+			User.findOne(finding, (err, user) => {
 				// if there are any errors, return the error
 				if(err){
 					return done(err);
@@ -82,13 +84,13 @@ module.exports = function(passport) {
 		// by default, local strategy uses username and password, we will override with email
 		usernameField : 'email',
 		passReqToCallback : true // allows us to pass in the req from our route (lets us check if a user is logged in or not)
-	}, function(req, email, password, done){
+	}, (req, email, password, done) => {
 		// asynchronous
-		process.nextTick(function(){
+		process.nextTick(() => {
 			let email = req.body.email;
 			email = email.toLowerCase();
 
-			User.findOne({'email': email}, function(err, user){
+			User.findOne({'email': email}, (err, user) => {
 				// if there are any errors, return the error
 				if(err){
 					return done(err);
@@ -96,7 +98,7 @@ module.exports = function(passport) {
 					
 				// check to see if theres already a user with that email
 				if(user){
-					return done(null, user, {registered: true});
+					return done(null, user, { registered: true });
 				}else{
 					let username = req.body.username;
 					username = username ? username.replace(' ', '') : '';
@@ -106,11 +108,11 @@ module.exports = function(passport) {
 
 					user.email = email;
 					user.username = username;
-					user.givenID = user.makeUniqueID(20);
-					user.emailConfirmationToken = user.makeUniqueID(20);
+					user.givenID = makeUniqueID(20);
+					user.emailConfirmationToken = makeUniqueID(20);
 					user.setPassword(req.body.password);
 
-					user.save(function(err, user) {
+					user.save((err, user) => {
 						if(err){
 							return done(err);
 						}
@@ -121,21 +123,21 @@ module.exports = function(passport) {
 							receiverName: receiverName
 						};
 
-						utilities.sendEmail(email, 'Welcome to Virtual Tour Builder!', template, templateOptions, function(){
+						sendEmail(email, 'Welcome to Sugarplate!', template, templateOptions, () => {
 							console.log('Email sent successfully!');
 						});
 
-						utilities.sendEmail(email, 'Please confirm your email!', 'emailConfirmation', {
+						sendEmail(email, 'Please confirm your email!', 'emailConfirmation', {
 							receiverName: receiverName,
 							url: 'http://www.xyz.xyz/email-confirmation/' + user.emailConfirmationToken
-						}, function(){
+						}, () => {
 							console.log('Email sent successfully!');
 						});
 
 						var token = user.generateJwt();
 						user.token = token;
 						
-						return done(null, user, {token: token});
+						return done(null, user, { token });
 					});
 				}
 			});

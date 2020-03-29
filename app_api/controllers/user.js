@@ -1,86 +1,86 @@
 var mongoose = require('mongoose');
 var User = mongoose.model('User');
-var utilities = require('../utilities/utilities.js');
 var async = require('async');
 var crypto = require('crypto');
 
-module.exports.getUser = function(req, res){
-	utilities.authorify(req, res, function(req, res, userId, userEmail){
+import { authorify, sendResJSON } from '../utilities';
+
+module.exports.getUser = (req, res) => {
+	authorify(req, res, (req, res, userId, userEmail) => {
 		//var data = (Object.keys(req.query).length) ? req.query : req.body;
 
 		User
-			.findById(userId)
-			.select('-hash -salt -__v')
-			.exec(function(err, user){
-				console.log('>>>>>>>>>>>>>>', userId);
-				if(err){
-					utilities.sendResJSON(res, 400, err);
-				}else{
-					utilities.sendResJSON(res, 200, user);
-				}
-			});
+		.findById(userId)
+		.select('-hash -salt -__v')
+		.exec((err, user) => {
+			if(err){
+				sendResJSON(res, 400, err);
+			}else{
+				sendResJSON(res, 200, user);
+			}
+		});
 	});
 };
 
-module.exports.getUserNames = function(req, res){
+module.exports.getUserNames = (req, res) => {
 	var data = (Object.keys(req.query).length) ? req.query : req.body;
 	
 	User
 	.find({_id: {$in: data.users}})
 	.select('firstname lastname')
-	.exec(function (err, users){
+	.exec( (err, users) => {
 		if(err){
-			utilities.sendResJSON(res, 400, err);
+			sendResJSON(res, 400, err);
 		}else{
-			utilities.sendResJSON(res, 200, users);
+			sendResJSON(res, 200, users);
 		}
 	});
 }
 
-module.exports.userBasicInfo = function(req, res){
+module.exports.userBasicInfo = (req, res) => {
 	var data = (Object.keys(req.query).length) ? req.query : req.body;
 
 	User
-		.findById(data.userId)
-		.select('firstname lastname files')
-		.exec(function(err, user){
-			if(err){
-				utilities.sendResJSON(res, 400, err);
-			}
+	.findById(data.userId)
+	.select('firstname lastname files')
+	.exec((err, user) => {
+		if(err){
+			sendResJSON(res, 400, err);
+		}
 
-			if(user){
-				var userFiles = user.files;
-				var avatarObj = {};
+		if(user){
+			var userFiles = user.files;
+			var avatarObj = {};
 
-				if(userFiles){
-					userFiles.forEach(function(file){
-						if(file.what == 'avatar'){
-							avatarObj = {
-								name: file.name,
-								source: file.source
-							};
-						}
-					});
-				}
-
-				utilities.sendResJSON(res, 200, {
-					firstname: user.firstname,
-					lastname: user.lastname,
-					avatar: avatarObj,
+			if(userFiles){
+				userFiles.forEach(file => {
+					if(file.what == 'avatar'){
+						avatarObj = {
+							name: file.name,
+							source: file.source
+						};
+					}
 				});
 			}
-		});
+
+			sendResJSON(res, 200, {
+				firstname: user.firstname,
+				lastname: user.lastname,
+				avatar: avatarObj,
+			});
+		}
+	});
 };
 
-module.exports.updateProfile = function(req, res){
-	utilities.authorify(req, res, function(req, res, userId, userEmail, userRole){
-		var query = (Object.keys(req.query).length) ? req.query : req.body;
+module.exports.updateProfile = (req, res) => {
+	authorify(req, res, (req, res, userId, userEmail, userRole) => {
+		const query = (Object.keys(req.query).length) ? req.query : req.body;
 		var id = null;
 
 		async.waterfall([
-			function(done){
+			done => {
 				if(query.other){
-					utilities.userCan(userRole, 'get-driver', function(){
+					utilities.userCan(userRole, 'get-driver', () => {
 						id = query._id;
 						done(null, id);
 					});
@@ -89,17 +89,17 @@ module.exports.updateProfile = function(req, res){
 					done(null, id);
 				}
 			},
-			function(id, done){
+			(id, done) => {
 				if(id){
 					User
 					.findById(id)
 					.select('-hash -salt -__v')
-					.exec(function(err, user){
+					.exec((err, user) => {
 						if(err){
-							utilities.sendResJSON(res, 400, err);
+							sendResJSON(res, 400, err);
 						}else{
 							var fields = ['username', 'firstname', 'lastname', 'email', 'phone', 'fax', 'address1', 'address2', 'city', 'state', 'country', 'zip', 'about', 'company_name', 'driver_license', 'license_number', 'driver_license_expiration', 'account_type', 'bg_check', 'approvedToWork'];
-							fields.forEach(function(field){
+							fields.forEach(field => {
 								user[field] = query[field];
 							});
 
@@ -111,13 +111,13 @@ module.exports.updateProfile = function(req, res){
 								if(user.vendor_type == 'individual'){
 									var company_fields = ['ssn'];
 									
-									company_fields.forEach(function(field){
+									company_fields.forEach(field => {
 										user[field] = query[field];
 									});
 								}else if(user.vendor_type == 'company'){
 									var company_fields = ['company_position', 'company_tax_id', 'company_type', 'company_employees', 'company_email', 'company_website'];
 									
-									company_fields.forEach(function(field){
+									company_fields.forEach(field => {
 										user[field] = query[field];
 									});
 								}
@@ -139,7 +139,7 @@ module.exports.updateProfile = function(req, res){
 									var myTrucks = query.trucks;
 									var newTrucksArr = [];
 
-									myTrucks.forEach(function(truck, index){
+									myTrucks.forEach((truck, index) => {
 										//
 										newTrucksArr.push({
 											type: truck.type,
@@ -166,11 +166,11 @@ module.exports.updateProfile = function(req, res){
 								}
 							}
 
-							user.save(function(err, user) {
+							user.save((err, user) => {
 								if(err){
-									utilities.sendResJSON(res, 400, err);
+									sendResJSON(res, 400, err);
 								}else{
-									utilities.sendResJSON(res, 200, user);
+									sendResJSON(res, 200, user);
 								}
 							});
 						}
@@ -178,35 +178,35 @@ module.exports.updateProfile = function(req, res){
 				}
 
 			}
-		], function(err){
-			utilities.sendResJSON(res, 400, {error: err});
+		], error => {
+			sendResJSON(res, 400, { error });
 		});
 	});
 };
 
-module.exports.changePassword = function(req, res) {
-	utilities.authorify(req, res, function(req, res, userId, userRole){
-		var query = (Object.keys(req.query).length) ? req.query : req.body;
+module.exports.changePassword = (req, res) => {
+	authorify(req, res, (req, res, userId, userRole) => {
+		const query = (Object.keys(req.query).length) ? req.query : req.body;
 
 		User
 		.findById(userId)
 		.select('-files')
-		.exec(function(err, user){
+		.exec((err, user) => {
 			if(err){
-				utilities.sendResJSON(res, 400, 'Error happened');
+				sendResJSON(res, 400, 'Error happened');
 			}
 
 			if(user){
 				if(!user.validPassword(query.current_pw)){
-					utilities.sendResJSON(res, 400, 'The provided password does not match the current password!');
+					sendResJSON(res, 400, 'The provided password does not match the current password!');
 				}else{
 					user.setPassword(query.new_pw);
 
-					user.save(function(err, user){
+					user.save((err, user) => {
 						if(err){
-							utilities.sendResJSON(res, 400, 'Could not save the new password');
+							sendResJSON(res, 400, 'Could not save the new password');
 						}else{
-							utilities.sendResJSON(res, 200, 'done');
+							sendResJSON(res, 200, 'done');
 						}
 					});
 				}
@@ -215,125 +215,125 @@ module.exports.changePassword = function(req, res) {
 	});
 }
 
-module.exports.forgotPassword = function(req, res) {
-	var query = (Object.keys(req.query).length) ? req.query : req.body;
+module.exports.forgotPassword = (req, res) => {
+	const query = (Object.keys(req.query).length) ? req.query : req.body;
 
 	async.waterfall([
-		function(done){
-			crypto.randomBytes(20, function(err, buf) {
+		done => {
+			crypto.randomBytes(20, (err, buf) => {
 				var token = buf.toString('hex');
 				done(err, token);
 			});
 		},
-		function(token, done){
+		(token, done) => {
 			var email = query.email;
 			email = email.toLowerCase();
 
-			User.findOne({ email: email}, function(err, user) {
+			User.findOne({ email: email}, (err, user) => {
 				console.log('Hola!!!');
 				if (!user) {
-					utilities.sendResJSON(res, 200, {error: 'User not found'});
+					sendResJSON(res, 200, {error: 'User not found'});
 					return true;
 				}
 
 				user.resetPasswordToken = token;
 				user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
 
-				user.save(function(err, user) {
+				user.save((err, user) => {
 					done(null, token, user);
 				});
 			});
 		},
-		function(token, user, done){
+		(token, user, done) => {
 			utilities.sendEmail(user.email, 'Zuba Password Reset', 'forgotPassword', {
 				host: req.headers.host,
 				token: token
-			}, function(response){
-				utilities.sendResJSON(res, 200, {response: response});
+			}, response => {
+				sendResJSON(res, 200, {response: response});
 			});
 		}
-	], function(err){
+	], error => {
 		if(err){
-			utilities.sendResJSON(res, 200, {error: err});
+			sendResJSON(res, 200, { error });
 		}else{
 			res.redirect('/forgot');
 		}
 	});
 };
 
-module.exports.emailConfirmation = function(req, res) {
+module.exports.emailConfirmation = (req, res) => {
 	User
-		.findOne({emailConfirmationToken: req.params.token})
-		.select('emailConfirmed')
-		.exec(function(err, user){
-			if(!user){
-				console.log('Error', err);
-				utilities.sendResJSON(res, 400, {error: 'can not find the provided token'});
-			}else{
-				user.emailConfirmed = true;
+	.findOne({emailConfirmationToken: req.params.token})
+	.select('emailConfirmed')
+	.exec((err, user) => {
+		if(!user){
+			console.log('Error', err);
+			sendResJSON(res, 400, {error: 'can not find the provided token'});
+		}else{
+			user.emailConfirmed = true;
 
-				user.save(function(err, user){
-					if(err){
-						console.log('Error', err);
-						utilities.sendResJSON(res, 400, err);
-					}else{
-						utilities.sendResJSON(res, 200, 'activated');
-					}
-				});
-			}
-		});
+			user.save((err, user) => {
+				if(err){
+					console.log('Error', err);
+					sendResJSON(res, 400, err);
+				}else{
+					sendResJSON(res, 200, 'activated');
+				}
+			});
+		}
+	});
 };
 
-module.exports.checkResetPassword = function(req, res) {
+module.exports.checkResetPassword = (req, res) => {
 	User
 		.findOne({
 			resetPasswordToken: req.params.token,
 			resetPasswordExpires: { $gt: Date.now() }
 		})
-		.exec(function(err, user){
+		.exec((err, user) => {
 			if(!user){
-				utilities.sendResJSON(res, 200, {error: 'Password reset token is invalid or has expired.'});
+				sendResJSON(res, 200, {error: 'Password reset token is invalid or has expired.'});
 			}else{
-				utilities.sendResJSON(res, 200, 'password reset');
+				sendResJSON(res, 200, 'password reset');
 			}
 		});
 };
 
-module.exports.doResetPassword = function(req, res) {
-	var query = (Object.keys(req.query).length) ? req.query : req.body;
+module.exports.doResetPassword = (req, res) => {
+	const query = (Object.keys(req.query).length) ? req.query : req.body;
 
 	async.waterfall([
-		function(done) {
+		done => {
 			User
-				.findOne({
-					resetPasswordToken: req.params.token,
-					resetPasswordExpires: { $gt: Date.now() }
-				})
-				.exec(function(err, user) {
-					if(!user){
-						utilities.sendResJSON(res, 200, {error: 'User not found'});
-						return true;
-					}
+			.findOne({
+				resetPasswordToken: req.params.token,
+				resetPasswordExpires: { $gt: Date.now() }
+			})
+			.exec((err, user) => {
+				if(!user){
+					sendResJSON(res, 200, {error: 'User not found'});
+					return true;
+				}
 
-					user.setPassword(query.password);
-					user.resetPasswordToken = undefined;
-					user.resetPasswordExpires = undefined;
+				user.setPassword(query.password);
+				user.resetPasswordToken = undefined;
+				user.resetPasswordExpires = undefined;
 
-					user.save(function(err) {
-						done(err, user);
+				user.save(err => {
+					done(err, user);
 
-					});
 				});
+			});
 		},
-		function(user, done) {
+		(user, done) => {
 			utilities.sendEmail(user.email, 'Your password has been changed', 'passwordResetConfirmation', {
 				email: user.email,
 				receiverName: user.username
-			}, function(response){
-				utilities.sendResJSON(res, 200, {response: response});
+			}, response => {
+				sendResJSON(res, 200, {response: response});
 			});
 		}
-	], function(err) {
+	], err => {
 		res.redirect('/');
 	});
 };

@@ -1,8 +1,9 @@
-var mongoose = require('mongoose');
-var crypto = require('crypto');
-var jwt = require('jsonwebtoken');
+import mongoose from 'mongoose';
+import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
 
-var userSchema = new mongoose.Schema({
+const userSchema = new mongoose.Schema({
+	username: String,
 	email: {
 		type: String,
 		unique: true,
@@ -36,7 +37,6 @@ var userSchema = new mongoose.Schema({
 		"default": false
 	},
 
-
 	accountStatus: {
 		type: String,
 		"default": 'active'
@@ -57,25 +57,13 @@ userSchema.methods.setPassword = function(password){
 	this.hash = crypto.pbkdf2Sync(password, this.salt, 1000, 64, 'sha1').toString('hex');
 };
 
-userSchema.methods.validPassword = function(password) {
-	var hash = crypto.pbkdf2Sync(password, this.salt, 1000, 64, 'sha1').toString('hex');
+userSchema.methods.validPassword = function(password){
+	const hash = crypto.pbkdf2Sync(password, this.salt, 1000, 64, 'sha1').toString('hex');
 	return this.hash === hash;
 };
 
-userSchema.methods.makeUniqueID = function(codeLength) {
-	codeLength = codeLength || 4;
-
-	var code = "";
-	var possibles = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-
-	for(var i=0; i < codeLength; i++){
-		code += possibles.charAt(Math.floor(Math.random() * possibles.length));
-	}
-	return code;
-};
-
-userSchema.methods.generateJwt = function() {
-	var expiry = new Date();
+userSchema.methods.generateJwt = function(){
+	const expiry = new Date();
 	expiry.setDate(expiry.getDate() + 7);
 
 	return jwt.sign({
